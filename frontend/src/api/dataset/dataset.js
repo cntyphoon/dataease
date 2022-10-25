@@ -69,6 +69,15 @@ export function groupTree(data) {
   })
 }
 
+export function dsGroupTree(data) {
+  return request({
+    url: '/dataset/group/tree',
+    method: 'post',
+    loading: true,
+    data
+  })
+}
+
 export function listDatasource() {
   return request({
     url: '/datasource/list',
@@ -136,20 +145,31 @@ export function batchEdit(data) {
   })
 }
 
-export function post(url, data, showLoading = true, timeout = 60000) {
+export function post(url, data, showLoading = true, timeout = 60000, hideMsg) {
   return request({
     url: url,
     method: 'post',
     loading: showLoading,
+    hideMsg,
     data
   })
 }
 
-export function fieldValues(fieldId) {
+export function mappingFieldValues(data) {
   return request({
-    url: '/dataset/field/fieldValues/' + fieldId,
+    url: '/dataset/field/mappingFieldValues',
     method: 'post',
-    loading: true
+    loading: true,
+    data
+  })
+}
+
+export function linkMappingFieldValues(data) {
+  return request({
+    url: '/dataset/field/linkMappingFieldValues',
+    method: 'post',
+    loading: true,
+    data
   })
 }
 
@@ -213,5 +233,20 @@ export function checkCustomDs() {
     loading: true
   })
 }
-export const disabledSyncDs= ['es', 'ck', 'mongo', 'redshift', 'hive', 'impala']
+export function exportExcel(data) {
+  return request({
+    url: '/dataset/taskLog/export',
+    method: 'post',
+    loading: true,
+    responseType: 'blob',
+    data
+  })
+}
+
+export function dsTable(page, size, id) {
+  return request({
+    url: '/datasource/getTables/' + id + '/' + page + '/' + size,
+    method: 'post',
+  })
+}
 export default { loadTable, getScene, addGroup, delGroup, addTable, delTable, groupTree, checkCustomDs }

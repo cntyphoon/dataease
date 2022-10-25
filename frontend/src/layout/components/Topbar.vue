@@ -22,12 +22,11 @@
 
     <div class="right-menu" style="color: var(--TopTextColor)">
       <template>
-
         <notification class="right-menu-item hover-effect" />
         <lang-select class="right-menu-item hover-effect" />
         <div style="height: 100%;padding: 0 8px;" class="right-menu-item hover-effect">
           <a
-            href="https://dataease.io/docs/"
+            :href="helpLink"
             target="_blank"
             style="display: flex;height: 100%;width: 100%;justify-content: center;align-items: center;"
           >
@@ -43,7 +42,6 @@
         trigger="click"
       >
         <div class="el-dropdown-link" style="display: flex;color: var(--TopTextColor);font-size: 14px; width:100%;">
-
           <span style="max-width:80px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">{{ name }}</span>
           <span><i class="el-icon-arrow-down el-icon--right" /></span>
         </div>
@@ -70,6 +68,16 @@
       </el-dropdown>
     </div>
 
+    <!--模板市场全屏显示框-->
+    <el-dialog
+      :visible="templateMarketShow"
+      :show-close="false"
+      class="dialog-css"
+      :fullscreen="true"
+      append-to-body
+    >
+      <template-market v-if="templateMarketShow" style="text-align: center" @closeDialog="changeTemplateMarketShow(false)" />
+    </el-dialog>
   </div>
 
 </template>
@@ -95,9 +103,12 @@ import {
 import {
   initTheme
 } from '@/utils/ThemeUtil'
+import TemplateMarket from '@/views/panel/templateMarket'
+import { changeFavicon } from '@/utils/index'
 export default {
   name: 'Topbar',
   components: {
+    TemplateMarket,
     AppLink,
     Notification,
     LangSelect
@@ -114,7 +125,8 @@ export default {
       uiInfo: null,
       logoUrl: null,
       axiosFinished: false,
-      isPluginLoaded: false
+      isPluginLoaded: false,
+      templateMarketShow: false
     }
   },
 
@@ -150,6 +162,12 @@ export default {
         return this.$store.getters.uiInfo['ui.topMenuTextActiveColor'].paramValue
       }
       return this.variables.topBarMenuTextActive
+    },
+    helpLink() {
+      if (this.$store.getters.uiInfo && this.$store.getters.uiInfo['ui.helpLink'] && this.$store.getters.uiInfo['ui.helpLink'].paramValue) {
+        return this.$store.getters.uiInfo['ui.helpLink'].paramValue
+      }
+      return 'https://dataease.io/docs/'
     },
     /* topMenuColor() {
         return this.$store.getters.uiInfo.topMenuColor
@@ -191,10 +209,18 @@ export default {
     bus.$on('set-top-menu-active-info', this.setTopMenuActiveInfo)
     bus.$on('set-top-text-info', this.setTopTextInfo)
     bus.$on('set-top-text-active-info', this.setTopTextActiveInfo)
+    bus.$on('sys-logout', this.logout)
     this.showTips && this.$nextTick(() => {
       const drop = this.$refs['my-drop']
       drop && drop.show && drop.show()
     })
+  },
+  beforeDestroy() {
+    bus.$off('set-top-menu-info', this.setTopMenuInfo)
+    bus.$off('set-top-menu-active-info', this.setTopMenuActiveInfo)
+    bus.$off('set-top-text-info', this.setTopTextInfo)
+    bus.$off('set-top-text-active-info', this.setTopTextActiveInfo)
+    bus.$off('sys-logout', this.logout)
   },
   created() {
     this.loadUiInfo()
@@ -280,6 +306,11 @@ export default {
     },
     // 设置侧边栏的显示和隐藏
     setSidebarHide(route) {
+      const hidePaths = ['/person-info', '/person-pwd', '/about']
+      if (hidePaths.includes(route.path)) {
+        this.$store.dispatch('app/toggleSideBarHide', true)
+        return
+      }
       //   if (!route.children || route.children.length === 1) {
       if (route.name !== 'system' && (!route.children || this.showChildLength(route) === 1)) {
         this.$store.dispatch('app/toggleSideBarHide', true)
@@ -294,13 +325,20 @@ export default {
       }
       return route.children.filter(kid => !kid.hidden).length
     },
-    async logout() {
-      await this.$store.dispatch('user/logout')
-      this.$router.push(`/login?redirect=${this.$route.fullPath}`)
+    async logout(param) {
+      const result = await this.$store.dispatch('user/logout', param)
+      if (result !== 'success' && result !== 'fail') {
+        window.location.href = result
+      } else {
+        this.$router.push('/login')
+      }
     },
     loadUiInfo() {
-      this.$store.dispatch('user/getUI').then(() => {
+      this.$store.dispatch('user/getUI').then((res) => {
         this.uiInfo = getSysUI()
+        if (!this.uiInfo || Object.keys(this.uiInfo).length === 0) {
+          this.uiInfo = res
+        }
         if (this.uiInfo['ui.logo'] && this.uiInfo['ui.logo'].paramValue) {
           this.logoUrl = '/system/ui/image/' + this.uiInfo['ui.logo'].paramValue
         }
@@ -312,13 +350,11 @@ export default {
           })
         }
 
-        /* if (this.uiInfo['ui.themeStr'] && this.uiInfo['ui.themeStr'].paramValue) {
-            if (this.uiInfo['ui.themeStr'].paramValue === 'dark') {
-              document.body.className = 'blackTheme'
-            } else if (this.uiInfo['ui.themeStr'].paramValue === 'light') {
-              document.body.className = ''
-            }
-          } */
+        if (this.uiInfo['ui.favicon'] && this.uiInfo['ui.favicon'].paramValue) {
+          const faviconUrl = '/system/ui/image/' + this.uiInfo['ui.favicon'].paramValue
+          changeFavicon(faviconUrl)
+        }
+
         this.axiosFinished = true
       })
     },
@@ -334,6 +370,9 @@ export default {
     },
     setTopTextActiveInfo(val) {
       this.loadUiInfo()
+    },
+    changeTemplateMarketShow(isShow) {
+      this.templateMarketShow = isShow
     }
 
   }
@@ -363,6 +402,16 @@ export default {
   .de-top-menu {
     background-color: var(--MainBG);
 
+  }
+  .template-market-item{
+    display: flex;
+    color: var(--MenuActiveBG, #409EFF);
+    font-size: 14px!important;
+    line-height: 38px!important;
+  }
+
+  .dialog-css ::v-deep .el-dialog__header{
+    display: none;
   }
 
 </style>

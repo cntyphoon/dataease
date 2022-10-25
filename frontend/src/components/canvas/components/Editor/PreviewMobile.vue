@@ -1,5 +1,6 @@
 <template>
   <div class="bg" :style="customStyle">
+    <canvas-opt-bar />
     <div id="canvasInfoMain" ref="canvasInfoMain" style="width: 100%;height: 100%">
       <div
         id="canvasInfoTemp"
@@ -12,17 +13,16 @@
         <el-row v-if="componentDataShow.length===0" style="height: 100%;" class="custom-position">
           {{ $t('panel.panelNull') }}
         </el-row>
-        <canvas-opt-bar />
         <ComponentWrapper
           v-for="(item, index) in componentDataInfo"
           :key="index"
           :config="item"
           :search-count="searchCount"
+          :canvas-style-data="canvasStyleData"
           :in-screen="inScreen"
         />
         <!--视图详情-->
         <el-dialog
-          :title="'['+showChartInfo.name+']'+$t('chart.chart_details')"
           :visible.sync="chartDetailsVisible"
           width="70%"
           class="dialog-css"
@@ -34,7 +34,7 @@
               {{ $t('chart.export_details') }}
             </el-button>
           </span>
-          <UserViewDialog ref="userViewDialog" :chart="showChartInfo" :chart-table="showChartTableInfo" />
+          <UserViewDialog ref="userViewDialog" :canvas-style-data="canvasStyleData" :chart="showChartInfo" :chart-table="showChartTableInfo" />
         </el-dialog>
       </div>
     </div>
@@ -47,7 +47,7 @@ import { mapState } from 'vuex'
 import ComponentWrapper from './ComponentWrapper'
 import { changeStyleWithScale } from '@/components/canvas/utils/translate'
 import { uuid } from 'vue-uuid'
-import { deepCopy } from '@/components/canvas/utils/utils'
+import {deepCopy, imgUrlTrans} from '@/components/canvas/utils/utils'
 import eventBus from '@/components/canvas/utils/eventBus'
 import elementResizeDetectorMaker from 'element-resize-detector'
 import UserViewDialog from '@/components/canvas/custom-component/UserViewDialog'
@@ -114,7 +114,7 @@ export default {
       if (this.canvasStyleData.openCommonStyle) {
         if (this.canvasStyleData.panel.backgroundType === 'image' && this.canvasStyleData.panel.imageUrl) {
           style = {
-            background: `url(${this.canvasStyleData.panel.imageUrl}) no-repeat`,
+            background: `url(${imgUrlTrans(this.canvasStyleData.panel.imageUrl)}) no-repeat`,
             ...style
           }
         } else if (this.canvasStyleData.panel.backgroundType === 'color') {
@@ -178,6 +178,7 @@ export default {
     _this.canvasStyleDataInit()
   },
   beforeDestroy() {
+    eventBus.$off('openChartDetailsDialog', this.openChartDetailsDialog)
     clearInterval(this.timer)
   },
   methods: {
@@ -285,15 +286,15 @@ export default {
     padding: 5px;
   }
 
-  .dialog-css > > > .el-dialog__title {
+  .dialog-css ::v-deep .el-dialog__title {
     font-size: 14px;
   }
 
-  .dialog-css > > > .el-dialog__header {
-    padding: 20px 20px 0;
+  .dialog-css ::v-deep .el-dialog__header {
+    padding: 40px 20px 0;
   }
 
-  .dialog-css > > > .el-dialog__body {
+  .dialog-css ::v-deep .el-dialog__body {
     padding: 10px 20px 20px;
   }
 

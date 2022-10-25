@@ -1,5 +1,10 @@
 import { hexColorToRGBA } from '@/views/chart/chart/util'
 import { DEFAULT_YAXIS_EXT_STYLE } from '@/views/chart/chart/chart'
+import { formatterItem, valueFormatter } from '@/views/chart/chart/formatter'
+
+let xAxisLabelFormatter = null
+let yAxisLabelFormatter = null
+let yExtAxisLabelFormatter = null
 
 export function componentStyle(chart_option, chart) {
   const padding = '8px'
@@ -80,6 +85,8 @@ export function componentStyle(chart_option, chart) {
           customStyle.xAxis.axisValue.max && (chart_option.xAxis.max = parseFloat(customStyle.xAxis.axisValue.max))
           customStyle.xAxis.axisValue.split && (chart_option.xAxis.interval = parseFloat(customStyle.xAxis.axisValue.split))
         }
+        xAxisLabelFormatter = customStyle.xAxis.axisLabelFormatter
+        chart_option.xAxis.axisLabel.formatter = xFormatter
       }
     }
     if (customStyle.yAxis && (chart.type.includes('bar') || chart.type.includes('line') || chart.type.includes('scatter'))) {
@@ -107,6 +114,8 @@ export function componentStyle(chart_option, chart) {
           customStyle.yAxis.axisValue.max && (chart_option.yAxis.max = parseFloat(customStyle.yAxis.axisValue.max))
           customStyle.yAxis.axisValue.split && (chart_option.yAxis.interval = parseFloat(customStyle.yAxis.axisValue.split))
         }
+        yAxisLabelFormatter = customStyle.yAxis.axisLabelFormatter
+        chart_option.yAxis.axisLabel.formatter = yFormatter
       }
     }
     if (customStyle.yAxis && chart.type === 'chart-mix') {
@@ -134,6 +143,8 @@ export function componentStyle(chart_option, chart) {
           customStyle.yAxis.axisValue.max && (chart_option.yAxis[0].max = parseFloat(customStyle.yAxis.axisValue.max))
           customStyle.yAxis.axisValue.split && (chart_option.yAxis[0].interval = parseFloat(customStyle.yAxis.axisValue.split))
         }
+        yAxisLabelFormatter = customStyle.yAxis.axisLabelFormatter
+        chart_option.yAxis[0].axisLabel.formatter = yFormatter
       }
 
       // axis ext
@@ -162,6 +173,8 @@ export function componentStyle(chart_option, chart) {
           customStyle.yAxisExt.axisValue.max && (chart_option.yAxis[1].max = parseFloat(customStyle.yAxisExt.axisValue.max))
           customStyle.yAxisExt.axisValue.split && (chart_option.yAxis[1].interval = parseFloat(customStyle.yAxisExt.axisValue.split))
         }
+        yExtAxisLabelFormatter = customStyle.yAxisExt.axisLabelFormatter
+        chart_option.yAxis[1].axisLabel.formatter = yExtFormatter
       }
     }
     if (customStyle.split && chart.type.includes('radar')) {
@@ -173,12 +186,49 @@ export function componentStyle(chart_option, chart) {
       chart_option.radar.splitLine = customStyle.split.splitLine
       chart_option.radar.splitArea = customStyle.split.splitArea
     }
+    if (customStyle.margin && customStyle.margin.marginModel && customStyle.margin.marginModel !== 'auto') {
+      const unit = getMarginUnit(customStyle.margin)
+      const result = { containLabel: true }
+      const realUnit = (unit === '%' ? unit : '')
+      if (customStyle.margin.marginTop != null) {
+        result.top = customStyle.margin.marginTop + realUnit
+      }
+      if (customStyle.margin.marginBottom != null) {
+        result.bottom = customStyle.margin.marginBottom + realUnit
+      }
+      if (customStyle.margin.marginLeft != null) {
+        result.left = customStyle.margin.marginLeft + realUnit
+      }
+      if (customStyle.margin.marginRight != null) {
+        result.right = customStyle.margin.marginRight + realUnit
+      }
+      if (!chart_option.grid) {
+        chart_option.grid = {}
+      }
+      Object.assign(chart_option.grid, JSON.parse(JSON.stringify(result)))
+    }
     if (customStyle.background) {
       chart_option.backgroundColor = hexColorToRGBA(customStyle.background.color, customStyle.background.alpha)
     }
   }
 }
+export const getMarginUnit = marginForm => {
+  if (!marginForm.marginModel || marginForm.marginModel === 'auto') return null
+  if (marginForm.marginModel === 'absolute') return 'px'
+  if (marginForm.marginModel === 'relative') return '%'
+  return null
+}
 
+const hexToRgba = (hex, opacity) => {
+  let rgbaColor = ''
+  const reg = /^#[\da-f]{6}$/i
+  if (reg.test(hex)) {
+    rgbaColor = `rgba(${parseInt('0x' + hex.slice(1, 3))},${parseInt(
+      '0x' + hex.slice(3, 5)
+    )},${parseInt('0x' + hex.slice(5, 7))},${opacity})`
+  }
+  return rgbaColor
+}
 export function seniorCfg(chart_option, chart) {
   if (chart.senior && chart.type && (chart.type.includes('bar') || chart.type.includes('line') || chart.type.includes('mix'))) {
     const senior = JSON.parse(chart.senior)
@@ -196,6 +246,28 @@ export function seniorCfg(chart_option, chart) {
             end: parseInt(senior.functionCfg.sliderRange[1])
           }
         ]
+        if (senior.functionCfg.sliderBg) {
+          chart_option.dataZoom[1].dataBackground = {
+            lineStyle: { color: hexToRgba(senior.functionCfg.sliderBg, 0.5) },
+            areaStyle: { color: hexToRgba(senior.functionCfg.sliderBg, 0.5) }
+          }
+          chart_option.dataZoom[1].borderColor = hexToRgba(senior.functionCfg.sliderBg, 0.3)
+        }
+        if (senior.functionCfg.sliderFillBg) {
+          chart_option.dataZoom[1].selectedDataBackground = {
+            lineStyle: { color: senior.functionCfg.sliderFillBg },
+            areaStyle: { color: senior.functionCfg.sliderFillBg }
+          }
+          const rgba = hexToRgba(senior.functionCfg.sliderFillBg, 0.2)
+          chart_option.dataZoom[1].fillerColor = rgba
+          
+        }
+        if (senior.functionCfg.sliderTextClolor) {
+          chart_option.dataZoom[1].textStyle = { color: senior.functionCfg.sliderTextClolor }
+          const rgba = hexToRgba(senior.functionCfg.sliderTextClolor, 0.5)
+          chart_option.dataZoom[1].handleStyle = { color: rgba }
+        }
+
         if (chart.type.includes('horizontal')) {
           chart_option.dataZoom[0].yAxisIndex = [0]
           chart_option.dataZoom[1].yAxisIndex = [0]
@@ -203,13 +275,29 @@ export function seniorCfg(chart_option, chart) {
         }
       }
     }
+    // begin mark line settings
+    if (chart_option.series && chart_option.series.length > 0) {
+      chart_option.series[0].markLine = {
+        symbol: 'none',
+        data: []
+      }
+    }
     if (senior.assistLine && senior.assistLine.length > 0) {
       if (chart_option.series && chart_option.series.length > 0) {
-        chart_option.series[0].markLine = {
-          symbol: 'none',
-          data: []
+        const customStyle = JSON.parse(chart.customStyle)
+        let xAxis, yAxis
+        if (customStyle.xAxis) {
+          xAxis = JSON.parse(JSON.stringify(customStyle.xAxis))
         }
-        senior.assistLine.forEach(ele => {
+        if (customStyle.yAxis) {
+          yAxis = JSON.parse(JSON.stringify(customStyle.yAxis))
+        }
+
+        const fixedLines = senior.assistLine.filter(ele => ele.field === '0')
+        const dynamicLines = chart.data.dynamicAssistLines
+        const lines = fixedLines.concat(dynamicLines)
+
+        lines.forEach(ele => {
           if (chart.type.includes('horizontal')) {
             chart_option.series[0].markLine.data.push({
               symbol: 'none',
@@ -223,7 +311,10 @@ export function seniorCfg(chart_option, chart) {
                 show: true,
                 color: ele.color,
                 fontSize: 10,
-                position: 'insideStartTop'
+                position: xAxis.position === 'bottom' ? 'insideStartTop' : 'insideEndTop',
+                formatter: function(param) {
+                  return ele.name + ' : ' + param.value
+                }
               },
               tooltip: {
                 show: false
@@ -242,7 +333,10 @@ export function seniorCfg(chart_option, chart) {
                 show: true,
                 color: ele.color,
                 fontSize: 10,
-                position: 'insideStartTop'
+                position: yAxis.position === 'left' ? 'insideStartTop' : 'insideEndTop',
+                formatter: function(param) {
+                  return ele.name + ' : ' + param.value
+                }
               },
               tooltip: {
                 show: false
@@ -253,4 +347,34 @@ export function seniorCfg(chart_option, chart) {
       }
     }
   }
+}
+
+const xFormatter = function(value) {
+  if (!xAxisLabelFormatter) {
+    return valueFormatter(value, formatterItem)
+  } else {
+    return valueFormatter(value, xAxisLabelFormatter)
+  }
+}
+
+const yFormatter = function(value) {
+  if (!yAxisLabelFormatter) {
+    return valueFormatter(value, formatterItem)
+  } else {
+    return valueFormatter(value, yAxisLabelFormatter)
+  }
+}
+
+const yExtFormatter = function(value) {
+  if (!yExtAxisLabelFormatter) {
+    return valueFormatter(value, formatterItem)
+  } else {
+    return valueFormatter(value, yExtAxisLabelFormatter)
+  }
+}
+
+export const reverseColor = colorValue => {
+  colorValue = '0x' + colorValue.replace(/#/g, '')
+  const str = '000000' + (0xFFFFFF - colorValue).toString(16)
+  return '#' + str.substring(str.length - 6, str.length)
 }

@@ -81,7 +81,10 @@
                           :label="item.name"
                           :value="item.id"
                         >
-                          <span style="float: left">
+                          <span v-if="item.isPlugin" style="float: left">
+                            <svg-icon :icon-class="item.type !== 'buddle-map' ? ('/api/pluginCommon/staticInfo/' + item.type + '/svg') : item.type" style="width: 14px;height: 14px" />
+                          </span>
+                          <span v-else style="float: left">
                             <svg-icon :icon-class="item.type" style="width: 14px;height: 14px" />
                           </span>
                           <span style="float: left; font-size: 12px"> {{ item.name }}</span>
@@ -107,7 +110,7 @@
                             <svg-icon v-if="viewField.deType === 0" icon-class="field_text" class="field-icon-text" />
                             <svg-icon v-if="viewField.deType === 1" icon-class="field_time" class="field-icon-time" />
                             <svg-icon
-                              v-if="viewField.deType === 2 || viewField.value === 3"
+                              v-if="viewField.deType === 2 || viewField.deType === 3"
                               icon-class="field_value"
                               class="field-icon-value"
                             />
@@ -204,7 +207,7 @@ export default {
       currentFiledTreeNode: null,
       defaultOuterParamsInfo: {
         paramName: '',
-        checked: false,
+        checked: true,
         targetViewInfoList: []
       },
       defaultTargetViewInfo: {
@@ -292,7 +295,6 @@ export default {
       })
     },
     panelNodeClick(data, node) {
-      // console.log('panelNodeClick:' + JSON.stringify(data))
       this.outerParamsInfo.targetViewInfoList = []
       this.getPanelViewList(data.id)
     },
@@ -322,12 +324,16 @@ export default {
       targetViewInfo.targetFieldId = null
     },
     sourceFieldCheckedChange(data) {
+      if (data.checked) {
+        this.outerParams.checked = true
+      }
       this.$nextTick(() => {
         this.$refs.outerParamsInfoTree.setCurrentKey(data.paramsInfoId)
         this.nodeClick(data)
       })
     },
     addOuterParamsInfo() {
+      this.outerParams.checked = true
       const outerParamsInfo = deepCopy(this.defaultOuterParamsInfo)
       outerParamsInfo['paramsInfoId'] = uuid.v1()
       this.outerParamsInfoArray.push(outerParamsInfo)
@@ -349,18 +355,18 @@ export default {
 
 <style scoped>
 
-  .my_table >>> .el-table__row > td {
+  .my_table ::v-deep .el-table__row > td {
     /* 去除表格线 */
     border: none;
     padding: 0 0;
   }
 
-  .my_table >>> .el-table th.is-leaf {
+  .my_table ::v-deep .el-table th.is-leaf {
     /* 去除上边框 */
     border: none;
   }
 
-  .my_table >>> .el-table::before {
+  .my_table ::v-deep .el-table::before {
     /* 去除下边框 */
     height: 0;
   }
@@ -423,7 +429,7 @@ export default {
     border-radius: 3px;
   }
 
-  >>> .el-popover {
+  ::v-deep .el-popover {
     height: 200px;
     overflow: auto;
   }

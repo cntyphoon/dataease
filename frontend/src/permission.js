@@ -14,10 +14,13 @@ import {
   filterAsyncRouter
 } from '@/store/modules/permission'
 import {
-  isMobile
+  isMobile,
+  changeFavicon
 } from '@/utils/index'
 import Layout from '@/layout/index'
-// import bus from './utils/bus'
+import { getSysUI } from '@/utils/auth'
+
+import { getSocket } from '@/websocket'
 
 NProgress.configure({
   showSpinner: false
@@ -25,7 +28,32 @@ NProgress.configure({
 
 const whiteList = ['/login', '/401', '/404', '/delink', '/nolic'] // no redirect whitelist
 
-router.beforeEach(async(to, from, next) => {
+const routeBefore = (callBack) => {
+  let uiInfo = getSysUI()
+  if (!uiInfo || Object.keys(uiInfo).length === 0) {
+    store.dispatch('user/getUI').then(() => {
+      document.title = getPageTitle()
+      uiInfo = getSysUI()
+      if (uiInfo['ui.favicon'] && uiInfo['ui.favicon'].paramValue) {
+        const faviconUrl = '/system/ui/image/' + uiInfo['ui.favicon'].paramValue
+        changeFavicon(faviconUrl)
+      }
+      callBack()
+    }).catch(err => {
+      document.title = getPageTitle()
+      console.error(err)
+      callBack()
+    })
+  } else {
+    document.title = getPageTitle()
+    if (!!uiInfo && uiInfo['ui.favicon'] && uiInfo['ui.favicon'].paramValue) {
+      const faviconUrl = '/system/ui/image/' + uiInfo['ui.favicon'].paramValue
+      changeFavicon(faviconUrl)
+    }
+    callBack()
+  }
+}
+router.beforeEach(async(to, from, next) => routeBefore(() => {
   // start progress bar
   NProgress.start()
   const mobileIgnores = ['/delink']
@@ -57,6 +85,8 @@ router.beforeEach(async(to, from, next) => {
         if (store.getters.roles.length === 0) { // 判断当前用户是否已拉取完user_info信息
           // get user info
           store.dispatch('user/getInfo').then(() => {
+            const deWebsocket = getSocket()
+            deWebsocket && deWebsocket.reconnect && deWebsocket.reconnect()
             store.dispatch('lic/getLicInfo').then(() => {
               loadMenus(next, to)
             }).catch(() => {
@@ -88,11 +118,12 @@ router.beforeEach(async(to, from, next) => {
       next()
     } else {
       // other pages that do not have permission to access are redirected to the login page.
-      next(`/login?redirect=${to.path}`)
+      // next(`/login?redirect=${to.path}`)
+      next('/login')
       NProgress.done()
     }
   }
-})
+}))
 export const loadMenus = (next, to) => {
   buildMenus().then(res => {
     const datas = res.data
@@ -184,10 +215,20 @@ const filterRouter = routers => {
   })
 }
 const hasPermission = (router, user_permissions) => {
-  // 菜单要求权限 但是当前用户权限没有包含菜单权限
-  if (router.permission && !user_permissions.includes(router.permission)) {
+  // 判断是否有符合权限 eg. user:read,user:delete
+  if (router.permission && router.permission.indexOf(',') > -1) {
+    const permissions = router.permission.split(',')
+    const permissionsFilter = permissions.filter(permission => {
+      return user_permissions.includes(permission)
+    })
+    if (!permissionsFilter || permissionsFilter.length === 0) {
+      return false
+    }
+  } else if (router.permission && !user_permissions.includes(router.permission)) {
+    // 菜单要求权限 但是当前用户权限没有包含菜单权限
     return false
   }
+
   if (!filterLic(router)) {
     return false
   }

@@ -1,5 +1,6 @@
 <template>
-  <span>
+  <span style="position: relative;display: inline-block;">
+    <i class="el-icon-arrow-down el-icon-delete" style="position: absolute;top: 6px;right: 24px;color: #878d9f;cursor: pointer;z-index: 1;" @click="removeItem" />
     <el-dropdown trigger="click" size="mini" @command="clickItem">
       <span class="el-dropdown-link">
         <el-tag size="small" class="item-axis" :type="tagType">
@@ -93,6 +94,7 @@
                 <el-dropdown-item :command="beforeSort('none')">{{ $t('chart.none') }}</el-dropdown-item>
                 <el-dropdown-item :command="beforeSort('asc')">{{ $t('chart.asc') }}</el-dropdown-item>
                 <el-dropdown-item :command="beforeSort('desc')">{{ $t('chart.desc') }}</el-dropdown-item>
+                <el-dropdown-item v-show="!item.chartId" :command="beforeSort('custom_sort')">{{ $t('chart.custom_sort') }}...</el-dropdown-item>
               </el-dropdown-menu>
             </el-dropdown>
           </el-dropdown-item>
@@ -108,6 +110,7 @@
 <script>
 import { getItemType } from '@/views/chart/components/drag-item/utils'
 import FieldErrorTips from '@/views/chart/components/drag-item/components/FieldErrorTips'
+import bus from '@/utils/bus'
 
 export default {
   name: 'ChartDragItem',
@@ -155,6 +158,10 @@ export default {
     }
   },
   mounted() {
+    bus.$on('reset-change-table', this.getItemTagType)
+  },
+  beforeDestroy() {
+    bus.$off('reset-change-table', this.getItemTagType)
   },
   methods: {
     clickItem(param) {
@@ -175,9 +182,18 @@ export default {
       }
     },
     sort(param) {
-      // console.log(param)
-      this.item.sort = param.type
-      this.$emit('onItemChange', this.item)
+      if (param.type === 'custom_sort') {
+        const item = {
+          index: this.index,
+          sort: param.type
+        }
+        this.$emit('onItemCustomSort', item)
+      } else {
+        this.item.index = this.index
+        this.item.sort = param.type
+        this.item.customSort = []
+        this.$emit('onItemChange', this.item)
+      }
     },
     beforeSort(type) {
       return {
@@ -185,7 +201,6 @@ export default {
       }
     },
     summary(param) {
-      // console.log(param)
       this.item.summary = param.type
       this.$emit('onItemChange', this.item)
     },
@@ -200,7 +215,6 @@ export default {
     },
 
     dateStyle(param) {
-      // console.log(param)
       this.item.dateStyle = param.type
       this.$emit('onItemChange', this.item)
     },
@@ -210,7 +224,6 @@ export default {
       }
     },
     datePattern(param) {
-      // console.log(param)
       this.item.datePattern = param.type
       this.$emit('onItemChange', this.item)
     },
@@ -258,7 +271,7 @@ export default {
 
   .item-span-style{
     display: inline-block;
-    width: 70px;
+    width: 80px;
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -273,6 +286,6 @@ export default {
     margin-left: 4px;
     color: #878d9f;
     position: absolute;
-    right: 25px;
+    right: 40px;
   }
 </style>

@@ -1,10 +1,16 @@
 <template>
-  <layout-content v-if="!noLayout" v-loading="jsname && !innerLoadingNames.includes(jsname) && $store.getters.loadingMap[$store.getters.currentPath]" :header="header" :back-name="backName">
+  <de-layout-content v-if="!noLayout && menuid !== 740" v-loading="jsname && !innerLoadingNames.includes(jsname) && $store.getters.loadingMap[$store.getters.currentPath]" :header="header" :back-name="backName">
     <async-component v-if="showAsync" :url="url" @execute-axios="executeAxios" @on-add-languanges="addLanguages" @on-plugin-layout="setLayoutInfo" @plugin-call-back="pluginCallBack" />
     <div v-else>
       <h1>未知组件无法展示</h1>
     </div>
-  </layout-content>
+  </de-layout-content>
+  <div v-else-if="menuid === 740">
+    <async-component v-if="showAsync" :url="url" @execute-axios="executeAxios" @on-add-languanges="addLanguages" @on-plugin-layout="setLayoutInfo" @plugin-call-back="pluginCallBack" />
+    <div v-else>
+      <h1>未知组件无法展示</h1>
+    </div>
+  </div>
   <div v-else>
     <async-component v-if="showAsync" :url="url" @execute-axios="executeAxios" @on-add-languanges="addLanguages" @on-plugin-layout="setLayoutInfo" @plugin-call-back="pluginCallBack" />
     <div v-else>
@@ -15,15 +21,15 @@
 </template>
 
 <script>
-import LayoutContent from '@/components/business/LayoutContent'
+import DeLayoutContent from '@/components/business/DeLayoutContent'
 import AsyncComponent from '@/components/AsyncComponent'
 import i18n from '@/lang'
 import bus from '@/utils/bus'
-import { execute } from '@/api/system/dynamic'
+import { execute, get } from '@/api/system/dynamic'
 export default {
   name: 'Dynamic',
   components: {
-    LayoutContent,
+    DeLayoutContent,
     AsyncComponent
   },
   props: {
@@ -47,22 +53,27 @@ export default {
       backName: null,
       baseUrl: '/api/pluginCommon/async/',
       url: null,
-      innerLoadingNames: ['SystemDept', 'SystemRole']
+      innerLoadingNames: ['SystemDept', 'SystemRole', 'SystemAuth']
+    }
+  },
+  watch: {
+    'menuid' : function() {
+      this.init()
     }
   },
   created() {
-    if (this.jsname && this.menuid) {
-      this.showAsync = true
-      // console.log(this.jsname)
-      this.url = this.baseUrl + this.menuid
-      //   this.url = 'http://localhost:8081/PluginDemo.js'
-    //   this.url = 'http://localhost:8081/SystemParam.js'
-    } else {
-      this.showAsync = false
-    }
+   this.init()
   },
 
   methods: {
+    init() {
+      if (this.jsname && this.menuid) {
+        this.showAsync = true
+        this.url = this.baseUrl + this.menuid
+      } else {
+        this.showAsync = false
+      }
+    },
     // hasLicense
     executeAxios(options) {
       execute(options).then(res => {
@@ -70,8 +81,8 @@ export default {
           options.callBack(res)
         }
       }).catch(e => {
-        if (options.callBack) {
-          options.callBack(e)
+        if (options.error) {
+          options.error(e)
         }
       })
     },
@@ -89,8 +100,6 @@ export default {
       this.backName = backName
     },
     pluginCallBack(param) {
-      // console.log(param)
-
       const { eventName, eventParam } = param
       bus.$emit(eventName, eventParam)
     }

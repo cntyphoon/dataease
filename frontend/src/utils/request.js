@@ -6,10 +6,12 @@ import Config from '@/settings'
 import i18n from '@/lang'
 import { tryShowLoading, tryHideLoading } from './loading'
 import { getLinkToken, setLinkToken } from '@/utils/auth'
+import Vue from 'vue'
 
 const TokenKey = Config.TokenKey
 const RefreshTokenKey = Config.RefreshTokenKey
 const LinkTokenKey = Config.LinkTokenKey
+const DownErrorKey = Config.DownErrorKey
 import Cookies from 'js-cookie'
 
 const getTimeOut = () => {
@@ -49,6 +51,7 @@ let service = axios.create({
 // request interceptor
 service.interceptors.request.use(
   config => {
+    const CancelToken = axios.CancelToken
     const idToken = getIdToken()
     if (idToken) {
       config.headers[Config.IdTokenKey] = idToken
@@ -72,6 +75,10 @@ service.interceptors.request.use(
     }
     config.loading && tryShowLoading(store.getters.currentPath)
 
+    config.cancelToken = new CancelToken(function executor(c) {
+      Vue.prototype.$currentHttpRequestList.set(config.url, c)
+    })
+
     return config
   },
   error => {
@@ -91,6 +98,10 @@ service.setTimeOut = time => {
 service.interceptors.response.use(response => {
   response.config.loading && tryHideLoading(store.getters.currentPath)
   checkAuth(response)
+  Vue.prototype.$currentHttpRequestList.delete(response.config.url)
+  if (checkDownError(response)) {
+    return response
+  }
   return response.data
 }, error => {
   const config = error.response && error.response.config || error.config
@@ -105,9 +116,16 @@ service.interceptors.response.use(response => {
     msg = error.message
   }
   !config.hideMsg && (!headers['authentication-status']) && $error(msg)
-  return Promise.reject(error)
+  return Promise.reject(config.url === '/dataset/table/sqlPreview' ? msg : error)
 })
-
+const checkDownError = response => {
+  if (response.request && response.request.responseType && response.request.responseType === 'blob' && response.headers && response.headers['de-down-error-msg']) {
+    const msg = i18n.t(response.headers[DownErrorKey])
+    $error(msg)
+    return true
+  }
+  return false
+}
 const checkAuth = response => {
   if (response.headers['authentication-status'] === 'login_expire') {
     const message = i18n.t('login.expires')
@@ -134,7 +152,6 @@ const checkAuth = response => {
     })
   }
   // token到期后自动续命 刷新token
-  //   if (response.headers[RefreshTokenKey] && !interruptTokenContineUrls.some(item => response.config.url.indexOf(item) >= 0)) {
   if (response.headers[RefreshTokenKey]) {
     const refreshToken = response.headers[RefreshTokenKey]
     store.dispatch('user/refreshToken', refreshToken)

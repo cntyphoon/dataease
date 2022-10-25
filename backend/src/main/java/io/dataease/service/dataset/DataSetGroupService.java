@@ -1,10 +1,9 @@
 package io.dataease.service.dataset;
 
 import io.dataease.auth.annotation.DeCleaner;
-import io.dataease.base.domain.DatasetGroup;
-import io.dataease.base.domain.DatasetGroupExample;
-import io.dataease.base.mapper.DatasetGroupMapper;
-import io.dataease.base.mapper.ext.ExtDataSetGroupMapper;
+import io.dataease.commons.constants.SysLogConstants;
+import io.dataease.commons.utils.DeLogUtils;
+import io.dataease.ext.ExtDataSetGroupMapper;
 import io.dataease.commons.constants.AuthConstants;
 import io.dataease.commons.constants.DePermissionType;
 import io.dataease.commons.constants.SysAuthConstants;
@@ -17,6 +16,9 @@ import io.dataease.dto.dataset.DataSetGroupDTO;
 import io.dataease.dto.dataset.DataSetTableDTO;
 import io.dataease.i18n.Translator;
 import io.dataease.listener.util.CacheUtils;
+import io.dataease.plugins.common.base.domain.DatasetGroup;
+import io.dataease.plugins.common.base.domain.DatasetGroupExample;
+import io.dataease.plugins.common.base.mapper.DatasetGroupMapper;
 import io.dataease.service.sys.SysAuthService;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
@@ -44,7 +46,7 @@ public class DataSetGroupService {
     @Resource
     private SysAuthService sysAuthService;
 
-    @DeCleaner(DePermissionType.DATASET)
+    @DeCleaner(value = DePermissionType.DATASET, key = "pid")
     public DataSetGroupDTO save(DatasetGroup datasetGroup) throws Exception {
         checkName(datasetGroup);
         if (StringUtils.isEmpty(datasetGroup.getId())) {
@@ -55,12 +57,14 @@ public class DataSetGroupService {
             datasetGroup.setCreateBy(AuthUtils.getUser().getUsername());
             datasetGroup.setCreateTime(System.currentTimeMillis());
             datasetGroupMapper.insert(datasetGroup);
+            DeLogUtils.save(SysLogConstants.OPERATE_TYPE.CREATE, SysLogConstants.SOURCE_TYPE.DATASET, datasetGroup.getId(), datasetGroup.getPid(), null, null);
             String userName = AuthUtils.getUser().getUsername();
             // 清理权限缓存
             CacheUtils.removeAll(AuthConstants.USER_PERMISSION_CACHE_NAME);
             sysAuthService.copyAuth(datasetGroup.getId(), SysAuthConstants.AUTH_SOURCE_TYPE_DATASET);
         } else {
             datasetGroupMapper.updateByPrimaryKeySelective(datasetGroup);
+            DeLogUtils.save(SysLogConstants.OPERATE_TYPE.MODIFY, SysLogConstants.SOURCE_TYPE.DATASET, datasetGroup.getId(), datasetGroup.getPid(), null, null);
         }
         DataSetGroupDTO dataSetGroupDTO = new DataSetGroupDTO();
         BeanUtils.copyBean(dataSetGroupDTO, datasetGroup);
@@ -133,7 +137,7 @@ public class DataSetGroupService {
         return ids;
     }
 
-    private void checkName(DatasetGroup datasetGroup) {
+    public void checkName(DatasetGroup datasetGroup) {
         DatasetGroupExample datasetGroupExample = new DatasetGroupExample();
         DatasetGroupExample.Criteria criteria = datasetGroupExample.createCriteria();
         if (StringUtils.isNotEmpty(datasetGroup.getPid())) {
@@ -153,7 +157,7 @@ public class DataSetGroupService {
         }
         List<DatasetGroup> list = datasetGroupMapper.selectByExample(datasetGroupExample);
         if (list.size() > 0) {
-            throw new RuntimeException(Translator.get("i18n_name_cant_repeat_same_group"));
+            throw new RuntimeException(Translator.get("I18N_DATASET_GROUP_EXIST"));
         }
     }
 

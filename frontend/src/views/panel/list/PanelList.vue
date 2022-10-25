@@ -39,8 +39,8 @@
             <span slot-scope="{ node, data }" class="custom-tree-node father">
               <span style="display: flex; flex: 1 1 0%; width: 0px;">
                 <span>
-                  <svg-icon v-if="!data.mobileLayout" icon-class="panel" class="ds-icon-scene" />
-                  <svg-icon v-if="data.mobileLayout" icon-class="panel-mobile" class="ds-icon-scene" />
+                  <svg-icon v-if="!data.mobileLayout" :icon-class="'panel-'+data.status" class="ds-icon-scene" />
+                  <svg-icon v-if="data.mobileLayout" :icon-class="'panel-mobile-'+data.status" class="ds-icon-scene" />
                 </span>
                 <span style="margin-left: 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" :title="data.name">{{ data.name }}</span>
               </span>
@@ -91,13 +91,13 @@
             <span slot-scope="{ node, data }" class="custom-tree-node-list father">
               <span style="display: flex; flex: 1 1 0%; width: 0px;">
                 <span v-if="data.nodeType === 'panel'">
-                  <svg-icon v-if="!data.mobileLayout" icon-class="panel" class="ds-icon-scene" />
-                  <svg-icon v-if="data.mobileLayout" icon-class="panel-mobile" class="ds-icon-scene" />
+                  <svg-icon v-if="!data.mobileLayout" :icon-class="'panel-'+data.status" class="ds-icon-scene" />
+                  <svg-icon v-if="data.mobileLayout" :icon-class="'panel-mobile-'+data.status" class="ds-icon-scene" />
                 </span>
                 <span v-if="data.nodeType === 'folder'">
                   <i class="el-icon-folder" />
                 </span>
-                <span style="margin-left: 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" :title="data.name">{{ data.name }}</span>
+                <span :class="data.status" style="margin-left: 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" :title="data.name">{{ data.name }}</span>
               </span>
               <span v-if="hasDataPermission('manage',data.privileges)" class="child">
                 <span v-if="data.nodeType ==='folder'" @click.stop>
@@ -228,7 +228,7 @@ import LinkGenerate from '@/views/link/generate'
 import { uuid } from 'vue-uuid'
 import bus from '@/utils/bus'
 import EditPanel from './EditPanel'
-import { addGroup, delGroup, groupTree, defaultTree, panelSave, initPanelData } from '@/api/panel/panel'
+import { addGroup, delGroup, groupTree, defaultTree, initPanelData, panelUpdate, viewPanelLog } from '@/api/panel/panel'
 import { mapState } from 'vuex'
 import {
   DEFAULT_COMMON_CANVAS_STYLE_STRING
@@ -241,6 +241,12 @@ export default {
   components: { GrantAuth, LinkGenerate, EditPanel, TreeSelector },
   data() {
     return {
+      responseSource:'panelQuery',
+      clearLocalStorage: [
+        'chart-tree',
+        'dataset-tree'
+      ],
+      historyRequestId: null,
       lastActiveNode: null, // 激活的节点 在这个节点下面动态放置子节点
       lastActiveNodeData: null,
       activeTree: 'self', // 识别当前操作的树类型self 是仪表板列表树 system 是默认仪表板树
@@ -354,7 +360,7 @@ export default {
   watch: {
     // 切换展示页面后 重新点击一下当前节点
     '$store.state.panel.mainActiveName': function(newVal, oldVal) {
-      if (newVal === 'PanelMain' && this.lastActiveNode && this.lastActiveNodeData) {
+      if (newVal === 'PanelMain' && this.lastActiveNodeData) {
         this.activeNodeAndClickOnly(this.lastActiveNodeData)
       }
     },
@@ -369,14 +375,40 @@ export default {
       this.$refs.panel_list_tree.filter(this.filterText)
     }
   },
+  beforeDestroy() {
+    bus.$off('newPanelFromMarket', this.newPanelFromMarket)
+  },
   mounted() {
-    this.$store.commit('setComponentData', [])
-    this.$store.commit('setCanvasStyle', DEFAULT_COMMON_CANVAS_STYLE_STRING)
+    this.clearCanvas()
     this.defaultTree(true)
-    this.tree(true)
     this.initCache()
+    const routerParam = this.$router.currentRoute.params
+    if(routerParam && 'appApply'===routerParam.responseSource ){
+      this.responseSource = routerParam.responseSource
+      this.lastActiveNode = routerParam
+      this.tree()
+    }else if (routerParam && routerParam.nodeType === 'panel' && this.historyRequestId !== routerParam.requestId) {
+      this.historyRequestId = routerParam.requestId
+      this.tree()
+      this.edit(routerParam, null)
+    } else {
+      this.tree(true)
+    }
   },
   methods: {
+    fromAppActive(){
+      this.activeNodeAndClickOnly(this.lastActiveNode)
+      this.clearLocalStorage.forEach(item => {
+        localStorage.removeItem(item)
+      })
+      this.responseSource='panelQuery'
+    },
+    newPanelFromMarket(panelInfo) {
+      if (panelInfo) {
+        this.tree()
+        this.edit(panelInfo, null)
+      }
+    },
     initCache() {
       // 初始化时提前加载视图和数据集的缓存
       this.initLocalStorage.forEach(item => {
@@ -621,6 +653,14 @@ export default {
         if (!userCache) {
           this.tData = res.data
         }
+        if(this.responseSource==='appApply'){
+          this.fromAppActive()
+        }
+        if (this.filterText) {
+          this.$nextTick(() => {
+            this.$refs.panel_list_tree.filter(this.filterText)
+          })
+        }
       })
     },
     defaultTree(cache = false) {
@@ -638,6 +678,11 @@ export default {
         if (!userCache) {
           this.defaultData = res.data
         }
+        if (this.filterText) {
+          this.$nextTick(() => {
+            this.$refs.default_panel_tree.filter(this.filterText)
+          })
+        }
       })
     },
 
@@ -648,8 +693,11 @@ export default {
       if (data.nodeType === 'panel') {
         // 清理pc布局缓存
         this.$store.commit('setComponentDataCache', null)
-        initPanelData(data.id, function(response) {
-          bus.$emit('set-panel-show-type', 0)
+        initPanelData(data.id, false, function(response) {
+          viewPanelLog({ panelId: data.id }).then(res => {
+            bus.$emit('set-panel-show-type', 0)
+            data.mobileLayout = response.data.mobileLayout
+          })
         })
       }
     },
@@ -686,11 +734,19 @@ export default {
     edit(data, node) {
       this.lastActiveNodeData = data
       this.lastActiveNode = node
-      // 清空当前缓存,快照
-      this.$store.commit('refreshSnapshot')
       this.$store.commit('setComponentData', [])
       this.$store.commit('setCanvasStyle', DEFAULT_COMMON_CANVAS_STYLE_STRING)
-      this.$store.dispatch('panel/setPanelInfo', data)
+      this.$store.dispatch('panel/setPanelInfo', {
+        id: data.id,
+        name: data.name,
+        privileges: data.privileges,
+        sourcePanelName: data.sourcePanelName,
+        status: data.status,
+        createBy: data.createBy,
+        createTime: data.createTime,
+        updateBy: data.updateBy,
+        updateTime: data.updateTime
+      })
       bus.$emit('PanelSwitchComponent', { name: 'PanelEdit' })
     },
     link(data) {
@@ -715,16 +771,17 @@ export default {
     // 激活并点击当前节点
     activeNodeAndClick(panelInfo) {
       if (panelInfo) {
-        this.$nextTick(() => {
+        const _this = this
+        _this.$nextTick(() => {
           // 延迟设置CurrentKey
-          this.$refs.panel_list_tree.setCurrentKey(panelInfo.id)
+          _this.$refs.panel_list_tree.setCurrentKey(panelInfo.id)
           // 去除default_tree 的影响
-          this.$refs.default_panel_tree.setCurrentKey(null)
-          this.$nextTick(() => {
+          _this.$refs.default_panel_tree.setCurrentKey(null)
+          _this.$nextTick(() => {
             document.querySelector('.is-current').firstChild.click()
             // 如果是仪表板列表的仪表板 直接进入编辑界面
             if (panelInfo.nodeType === 'panel') {
-              this.edit(this.lastActiveNodeData, this.lastActiveNode)
+              _this.edit(this.lastActiveNodeData, this.lastActiveNode)
             }
           })
         })
@@ -733,12 +790,16 @@ export default {
     // 激活当前节点
     activeNodeAndClickOnly(panelInfo) {
       if (panelInfo) {
-        this.$nextTick(() => {
+        const _this = this
+        _this.$nextTick(() => {
           // 延迟设置CurrentKey
-          this.$refs.panel_list_tree.setCurrentKey(panelInfo.id)
+          _this.$refs.panel_list_tree.setCurrentKey(panelInfo.id)
           // 去除default_tree 的影响
-          this.$refs.default_panel_tree.setCurrentKey(null)
-          this.$nextTick(() => {
+          _this.$refs.default_panel_tree.setCurrentKey(null)
+          if (panelInfo.parents) {
+            _this.expandedArray = panelInfo.parents
+          }
+          _this.$nextTick(() => {
             document.querySelector('.is-current').firstChild.click()
           })
         })
@@ -760,7 +821,6 @@ export default {
               children: res.data
             }
           ]
-          // console.log('tGroupData=>' + JSON.stringify(_this.tGroupData))
         } else {
           _this.tGroupData = res.data
         }
@@ -774,7 +834,7 @@ export default {
     saveMoveGroup() {
       this.moveInfo.pid = this.tGroup.id
       this.moveInfo['optType'] = 'move'
-      panelSave(this.moveInfo).then(response => {
+      panelUpdate(this.moveInfo).then(response => {
         this.tree()
         this.closeMoveGroup()
       })
@@ -805,7 +865,14 @@ export default {
       this.searchType = searchTypeInfo
     },
     editFromPanelViewShow() {
-      this.edit(this.lastActiveNodeData, this.lastActiveNode)
+      this.$store.commit('setComponentData', [])
+      this.$store.commit('setCanvasStyle', DEFAULT_COMMON_CANVAS_STYLE_STRING)
+      bus.$emit('PanelSwitchComponent', { name: 'PanelEdit' })
+    },
+    editPanelBashInfo(params) {
+      if (params.operation === 'status') {
+        this.lastActiveNodeData.status = params.value
+      }
     }
   }
 }
@@ -840,10 +907,10 @@ export default {
     padding:0 8px;
   }
 
-  .dialog-css>>>.el-dialog__body {
+  .dialog-css ::v-deep .el-dialog__body {
     padding: 15px 20px;
   }
-  .dialog-css >>>.el-dialog__body {
+  .dialog-css ::v-deep .el-dialog__body {
     padding: 10px 20px 20px;
   }
 
@@ -854,6 +921,13 @@ export default {
   .father:hover .child {
     /*display: inline;*/
     visibility: visible;
+  }
+
+  .unpublished {
+    color: #b2b2b2
+  }
+
+  .publish {
   }
 
 </style>

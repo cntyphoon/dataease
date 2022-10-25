@@ -17,7 +17,12 @@
     <div style="max-height: 50vh;overflow-y: auto;">
       <el-row v-for="(f,index) in item.filter" :key="index" class="filter-item">
         <el-col :span="4">
-          <span>{{ item.name }} ({{ $t('chart.'+item.summary) }})</span>
+          <span>
+            {{ item.name }}
+            <span v-show="item.summary && item.summary !== ''">
+              ({{ $t('chart.'+item.summary) }})
+            </span>
+          </span>
         </el-col>
         <el-col :span="8">
           <el-select v-model="f.term" size="mini">
@@ -124,14 +129,14 @@ export default {
   justify-content: left;
   align-items: center;
 }
-.form-item>>>.el-form-item__label{
+.form-item ::v-deep .el-form-item__label{
   font-size: 12px;
 }
   span{
     font-size: 12px;
   }
 
-  .value-item>>>.el-input{
+  .value-item ::v-deep .el-input{
     position: relative;
     display: inline-block;
     width: 80px!important;

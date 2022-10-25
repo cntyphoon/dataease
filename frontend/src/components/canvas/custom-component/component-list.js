@@ -17,23 +17,32 @@ export const BASE_MOBILE_STYLE = {
 }
 
 // 组件仪表板样式
-export const COMMON_BACKGROUND = {
-  enable: true,
-  backgroundType: 'color',
+export const COMMON_BACKGROUND_BASE = {
+  backgroundColorSelect: true,
   color: '#FFFFFF',
-  innerImage: null,
-  outerImage: null,
   alpha: 100,
   borderRadius: 5,
   innerPadding: 0
 }
 
+// 组件仪表板样式
+export const COMMON_BACKGROUND = {
+  ...COMMON_BACKGROUND_BASE,
+  enable: false,
+  backgroundType: 'innerImage',
+  innerImage: 'board/blue_1.svg',
+  innerImageColor: '#1094E5',
+  outerImage: null
+}
+
 // 空组件仪表板样式
 export const COMMON_BACKGROUND_NONE = {
   enable: false,
-  backgroundType: 'color',
+  backgroundColorSelect: false,
+  backgroundType: 'innerImage',
   color: '#FFFFFF',
-  innerImage: null,
+  innerImage: 'board/blue_1.svg',
+  innerImageColor: '#1094E5',
   outerImage: null,
   alpha: 100,
   borderRadius: 0,
@@ -47,6 +56,11 @@ export const commonStyle = {
   borderStyle: 'solid',
   borderWidth: 0,
   borderRadius: 0
+}
+
+export const PIC_STYLE = {
+  ...commonStyle,
+  adaptation: 'adaptation'
 }
 
 export const commonAttr = {
@@ -106,7 +120,8 @@ export const STREAMMEDIALINKS = {
     type: 'flv',
     isLive: false,
     cors: true, // 允许跨域
-    loop: true
+    loop: true,
+    autoplay: false
     // url: null // 网络动画视频
   }
 }
@@ -123,6 +138,14 @@ export const assistList = [
     type: 'v-text',
     label: '文字',
     icon: 'iconfont icon-text',
+    defaultClass: 'text-filter'
+  },
+  {
+    id: '10002',
+    component: 'de-rich-text',
+    type: 'de-rich-text',
+    label: '富文本',
+    icon: 'iconfont icon-fuwenbenkuang',
     defaultClass: 'text-filter'
   },
   {
@@ -147,7 +170,7 @@ export const assistList = [
 export const pictureList = [
   {
     id: '20001',
-    component: 'picture-add',
+    component: 'Picture',
     type: 'picture-add',
     label: '图片',
     icon: 'iconfont icon-picture',
@@ -171,6 +194,33 @@ export const pictureList = [
   }
 ]
 
+export const tabUseList = [
+  {
+    id: '20002',
+    component: 'video',
+    type: 'video',
+    label: '视频',
+    icon: 'iconfont icon-video',
+    defaultClass: 'text-filter'
+  },
+  {
+    id: '20003',
+    component: 'stream-media',
+    type: 'stream-media',
+    label: '流媒体',
+    icon: 'iconfont icon-a-liumeitimeitiliebiao',
+    defaultClass: 'text-filter'
+  },
+  {
+    id: '30002',
+    component: 'de-frame',
+    type: 'de-frame',
+    label: '网页',
+    icon: 'iconfont icon-iframe',
+    defaultClass: 'text-filter'
+  }
+]
+
 export const otherList = [
   {
     id: '30001',
@@ -190,6 +240,28 @@ export const otherList = [
   }
 ]
 
+export const USER_VIEW = {
+  id: '10005',
+  component: 'user-view',
+  label: '用户视图',
+  propValue: '',
+  icon: 'juxing',
+  type: 'view',
+  mobileStyle: BASE_MOBILE_STYLE,
+  hyperlinks: HYPERLINKS,
+  style: {
+    width: 300,
+    height: 200
+  },
+  x: 1,
+  y: 108,
+  sizex: 12,
+  sizey: 6,
+  auxiliaryMatrix: true,
+  miniSizex: 1,
+  miniSizey: 1
+}
+
 // 编辑器左侧组件列表
 const list = [
   {
@@ -200,6 +272,7 @@ const list = [
     icon: 'wenben',
     type: 'v-text',
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
       width: 400,
       height: 100,
@@ -211,7 +284,6 @@ const list = [
       color: '#000000',
       verticalAlign: 'middle'
     },
-    hyperlinks: HYPERLINKS,
     x: 1,
     y: 1,
     sizex: 10,
@@ -221,26 +293,21 @@ const list = [
   },
   {
     id: '10002',
-    component: 'v-button',
-    label: '按钮',
-    propValue: '按钮',
-    icon: 'button',
-    type: 'v-button',
+    component: 'de-rich-text',
+    label: '富文本',
+    propValue: '双击进入编辑状态',
+    icon: 'icon-fuwenbenkuang',
+    type: 'de-rich-text',
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
-      width: 100,
-      height: 34,
-      borderWidth: '',
-      borderColor: '',
-      borderRadius: '',
-      fontSize: 14,
-      fontWeight: 400,
-      lineHeight: '',
-      letterSpacing: 0,
-      textAlign: '',
-      color: '',
-      backgroundColor: ''
+      width: 400,
+      height: 100
     },
+    x: 1,
+    y: 1,
+    sizex: 10,
+    sizey: 2,
     miniSizex: 1,
     miniSizey: 1
   },
@@ -252,6 +319,7 @@ const list = [
     type: 'Picture',
     propValue: require('@/components/canvas/assets/title.jpg'),
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
       width: 300,
       height: 200
@@ -271,6 +339,7 @@ const list = [
     type: 'Picture',
     propValue: require('@/components/canvas/assets/bg-kj-1.jpg'),
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
       borderStyle: 'solid',
       borderWidth: 0,
@@ -289,6 +358,7 @@ const list = [
     icon: 'juxing',
     type: 'rect-shape',
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
       width: 300,
       height: 200,
@@ -303,26 +373,7 @@ const list = [
     miniSizex: 1,
     miniSizey: 1
   },
-  {
-    id: '10005',
-    component: 'user-view',
-    label: '用户视图',
-    propValue: '',
-    icon: 'juxing',
-    type: 'view',
-    mobileStyle: BASE_MOBILE_STYLE,
-    style: {
-      width: 300,
-      height: 200
-    },
-    x: 1,
-    y: 36,
-    sizex: 10,
-    sizey: 6,
-    auxiliaryMatrix: true,
-    miniSizex: 1,
-    miniSizey: 1
-  },
+  USER_VIEW,
   {
     id: '10006',
     component: 'de-tabs',
@@ -331,6 +382,7 @@ const list = [
     icon: 'tabs',
     type: 'de-tabs',
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
       width: 200,
       height: 200,
@@ -347,7 +399,7 @@ const list = [
     },
     x: 1,
     y: 1,
-    sizex: 10,
+    sizex: 12,
     sizey: 10,
     miniSizex: 1,
     miniSizey: 1
@@ -360,6 +412,7 @@ const list = [
     icon: 'shijian',
     type: 'de-show-date',
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
       width: 250,
       height: 100,
@@ -372,14 +425,13 @@ const list = [
       verticalAlign: 'middle',
       borderStyle: 'solid',
       borderColor: '#000000',
-      time_margin: 0,
-      padding: 10
+      time_margin: 0
     },
     formatInfo: {
       openMode: '0',
       showWeek: false,
       showDate: true,
-      dateFormat: 'yyyy年-MM月-dd日',
+      dateFormat: 'yyyy-MM-dd',
       timeFormat: 'hh:mm:ss'
     },
     x: 1,
@@ -397,6 +449,7 @@ const list = [
     icon: 'iconfont icon-iframe',
     defaultClass: 'text-filter',
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
       width: 400,
       height: 200
@@ -411,7 +464,7 @@ const list = [
   },
   {
     id: '20001',
-    component: 'picture-add',
+    component: 'Picture',
     type: 'picture-add',
     label: '图片',
     icon: 'iconfont icon-picture',
@@ -420,7 +473,8 @@ const list = [
     hyperlinks: HYPERLINKS,
     style: {
       width: 400,
-      height: 200
+      height: 200,
+      adaptation: 'adaptation'
     },
     x: 1,
     y: 1,
@@ -437,6 +491,7 @@ const list = [
     icon: 'iconfont icon-picture',
     defaultClass: 'text-filter',
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
       width: 400,
       height: 200
@@ -457,6 +512,7 @@ const list = [
     icon: 'iconfont icon-picture',
     defaultClass: 'text-filter',
     mobileStyle: BASE_MOBILE_STYLE,
+    hyperlinks: HYPERLINKS,
     style: {
       width: 400,
       height: 200

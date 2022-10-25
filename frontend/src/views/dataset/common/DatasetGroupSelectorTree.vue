@@ -23,11 +23,15 @@
         <el-col :span="8">
           <el-dropdown>
             <el-button size="mini" type="primary">
-              {{ searchMap[searchType] }}<i class="el-icon-arrow-down el-icon--right" />
+              {{ searchMap[searchType]
+              }}<i class="el-icon-arrow-down el-icon--right" />
             </el-button>
             <el-dropdown-menu slot="dropdown">
-              <el-dropdown-item @click.native="searchTypeClick('all')">{{ $t('commons.all') }}</el-dropdown-item>
-              <el-dropdown-item @click.native="searchTypeClick('folder')">{{ this.$t('commons.folder') }}
+              <el-dropdown-item @click.native="searchTypeClick('all')">{{
+                $t('commons.all')
+              }}</el-dropdown-item>
+              <el-dropdown-item @click.native="searchTypeClick('folder')"
+                >{{ this.$t('commons.folder') }}
               </el-dropdown-item>
             </el-dropdown-menu>
           </el-dropdown>
@@ -38,6 +42,7 @@
         <div class="block" :style="treeStyle">
           <el-tree
             ref="datasetTreeRef"
+            :current-node-key="checkedTable ? checkedTable.id : ''"
             :default-expanded-keys="expandedArray"
             :data="data"
             node-key="id"
@@ -46,29 +51,88 @@
             :filter-node-method="filterNode"
             @node-click="nodeClick"
           >
-            <span v-if="data.modelInnerType === 'group'" slot-scope="{ node, data }" class="custom-tree-node">
-              <span style="display: flex;flex: 1;width: 0;">
+            <span
+              v-if="data.modelInnerType === 'group'"
+              slot-scope="{ node, data }"
+              class="custom-tree-node"
+            >
+              <span style="display: flex; flex: 1; width: 0">
                 <span v-if="data.modelInnerType === 'scene'">
-                  <svg-icon icon-class="scene" class="ds-icon-scene" />
+                  <svg-icon icon-class="scene"/>
                 </span>
-                <span style="margin-left: 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" :title="data.name">{{ data.name }}</span>
+                <span
+                  style="
+                    margin-left: 6px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                  "
+                  :title="data.name"
+                  >{{ data.name }}</span
+                >
               </span>
             </span>
-            <span v-else slot-scope="{ node, data }" class="custom-tree-node-list">
-              <span :id="data.id" style="display: flex;flex: 1;width: 0;">
+            <span
+              v-else
+              slot-scope="{ node, data }"
+              class="custom-tree-node-list"
+            >
+              <span :id="data.id" style="display: flex; flex: 1; width: 0">
                 <span>
-                  <svg-icon v-if="data.modelInnerType === 'db'" icon-class="ds-db" class="ds-icon-db" />
-                  <svg-icon v-if="data.modelInnerType === 'sql'" icon-class="ds-sql" class="ds-icon-sql" />
-                  <svg-icon v-if="data.modelInnerType === 'excel'" icon-class="ds-excel" class="ds-icon-excel" />
-                  <svg-icon v-if="data.modelInnerType === 'custom'" icon-class="ds-custom" class="ds-icon-custom" />
-                  <svg-icon v-if="data.modelInnerType === 'union'" icon-class="ds-union" class="ds-icon-union" />
-                  <svg-icon v-if="data.modelInnerType === 'api'" icon-class="ds-api" class="ds-icon-api" />
+                  <svg-icon
+                    v-if="data.modelInnerType === 'db'"
+                    icon-class="ds-db"
+                    class="ds-icon-db"
+                  />
+                  <svg-icon
+                    v-if="data.modelInnerType === 'sql'"
+                    icon-class="ds-sql"
+                    class="ds-icon-sql"
+                  />
+                  <svg-icon
+                    v-if="data.modelInnerType === 'excel'"
+                    icon-class="ds-excel"
+                    class="ds-icon-excel"
+                  />
+                  <svg-icon
+                    v-if="data.modelInnerType === 'custom'"
+                    icon-class="ds-custom"
+                    class="ds-icon-custom"
+                  />
+                  <svg-icon
+                    v-if="data.modelInnerType === 'union'"
+                    icon-class="ds-union"
+                    class="ds-icon-union"
+                  />
+                  <svg-icon
+                    v-if="data.modelInnerType === 'api'"
+                    icon-class="ds-api"
+                    class="ds-icon-api"
+                  />
                 </span>
-                <span v-if="data.modelInnerType === 'db' || data.modelInnerType === 'sql'">
-                  <span v-if="data.mode === 0" style="margin-left: 6px"><i class="el-icon-s-operation" /></span>
-                  <span v-if="data.mode === 1" style="margin-left: 6px"><i class="el-icon-alarm-clock" /></span>
+                <span
+                  v-if="
+                    data.modelInnerType === 'db' ||
+                    data.modelInnerType === 'sql'
+                  "
+                >
+                  <span v-if="data.mode === 0" style="margin-left: 6px"
+                    ><i class="el-icon-s-operation"
+                  /></span>
+                  <span v-if="data.mode === 1" style="margin-left: 6px"
+                    ><i class="el-icon-alarm-clock"
+                  /></span>
                 </span>
-                <span style="margin-left: 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" :title="data.name">{{ data.name }}</span>
+                <span
+                  style="
+                    margin-left: 6px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                  "
+                  :title="data.name"
+                  >{{ data.name }}</span
+                >
               </span>
             </span>
           </el-tree>
@@ -133,6 +197,11 @@ export default {
       type: Boolean,
       required: false,
       default: false
+    },
+    checkedTable: {
+      type: Object,
+      required: false,
+      default: null
     }
   },
   data() {
@@ -172,18 +241,20 @@ export default {
         parentId: 'pid'
       },
       isTreeSearch: false,
-      treeStyle: this.fixHeight ? {
-        height: '300px',
-        overflow: 'auto'
-      } : {}
+      treeStyle: this.fixHeight
+        ? {
+            height: '300px',
+            overflow: 'auto'
+          }
+        : {}
     }
   },
   computed: {},
   watch: {
-    'unionData': function() {
+    unionData: function () {
       this.unionDataChange()
     },
-    'table': function() {
+    table: function () {
       this.treeNode()
     },
     filterText(val) {
@@ -197,9 +268,9 @@ export default {
   },
   mounted() {
     this.treeNode()
+    this.initExpand()
   },
-  created() {
-  },
+  created() {},
   methods: {
     close() {
       this.editGroup = false
@@ -218,21 +289,29 @@ export default {
         name: ''
       }
     },
+    initExpand() {
+      if (this.checkedTable && this.checkedTable.pid) {
+        this.expandedArray.push(this.checkedTable.pid)
+      }
+    },
     treeNode(cache) {
       const modelInfo = localStorage.getItem('dataset-tree')
-      const userCache = (modelInfo && cache)
+      const userCache = modelInfo && cache
       if (userCache) {
         this.data = JSON.parse(modelInfo)
       }
       this.customType ? this.customType.push('group') : null
-      queryAuthModel({
-        modelType: 'dataset',
-        privileges: this.privileges,
-        datasetMode: this.mode,
-        clearEmptyDir: this.clearEmptyDir,
-        mode: this.mode < 0 ? null : this.mode,
-        modelInnerTypeArray: this.customType
-      }, !userCache).then(res => {
+      queryAuthModel(
+        {
+          modelType: 'dataset',
+          privileges: this.privileges,
+          datasetMode: this.mode,
+          clearEmptyDir: this.clearEmptyDir,
+          mode: this.mode < 0 ? null : this.mode,
+          modelInnerTypeArray: this.customType
+        },
+        !userCache
+      ).then((res) => {
         if (cache) {
           localStorage.setItem('dataset-tree', JSON.stringify(res.data))
         }
@@ -268,9 +347,13 @@ export default {
       }
       // check mode=1的数据集是否创建doris表
       if (data.mode === 1 && !this.showMode) {
-        post('/dataset/table/checkDorisTableIsExists/' + data.id, {}, false).then(response => {
+        post(
+          '/dataset/table/checkDorisTableIsExists/' + data.id,
+          {},
+          false
+        ).then((response) => {
           if (response.data) {
-            this.$nextTick(function() {
+            this.$nextTick(function () {
               this.$emit('getTable', data)
             })
           } else {
@@ -291,7 +374,7 @@ export default {
         return
       }
       if (!this.checkedList || this.checkedList.length === 0) {
-        this.tableData.forEach(ele => {
+        this.tableData.forEach((ele) => {
           const span = document.getElementById(ele.id).parentNode
           const div1 = span.parentNode
           const div2 = div1.parentNode
@@ -301,15 +384,17 @@ export default {
         })
         return
       }
-      const tableList = this.tableData.map(ele => {
+      const tableList = this.tableData.map((ele) => {
         return ele.id
       })
-      const unionList = this.unionData.map(ele => {
+      const unionList = this.unionData.map((ele) => {
         return ele.targetTableId
       })
       unionList.push(this.checkedList[0].tableId)
-      const notUnionList = tableList.concat(unionList).filter(v => tableList.includes(v) && !unionList.includes(v))
-      notUnionList.forEach(ele => {
+      const notUnionList = tableList
+        .concat(unionList)
+        .filter((v) => tableList.includes(v) && !unionList.includes(v))
+      notUnionList.forEach((ele) => {
         const span = document.getElementById(ele).parentNode
         const div1 = span.parentNode
         const div2 = div1.parentNode
@@ -331,7 +416,10 @@ export default {
     filterNode(value, data) {
       if (!value) return true
       if (this.searchType === 'folder') {
-        if (data.modelInnerType === 'group' && data.label.indexOf(value) !== -1) {
+        if (
+          data.modelInnerType === 'group' &&
+          data.label.indexOf(value) !== -1
+        ) {
           this.searchPids.push(data.id)
           return true
         }
@@ -355,12 +443,12 @@ export default {
 
 <style scoped>
 .el-divider--horizontal {
-  margin: 12px 0
+  margin: 12px 0;
 }
 .search-input {
   padding: 12px 0;
 }
-.tree-list>>>.el-tree-node__expand-icon.is-leaf{
+.tree-list ::v-deep .el-tree-node__expand-icon.is-leaf {
   display: none;
 }
 .custom-tree-node {
@@ -377,7 +465,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   font-size: 14px;
-  padding:0 8px;
+  padding: 0 8px;
 }
 .custom-position {
   flex: 1;
@@ -395,11 +483,11 @@ export default {
 .title-text {
   line-height: 26px;
 }
-.scene-title{
+.scene-title {
   width: 100%;
   display: flex;
 }
-.scene-title-name{
+.scene-title-name {
   width: 100%;
   overflow: hidden;
   display: inline-block;

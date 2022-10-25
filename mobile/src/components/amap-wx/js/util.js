@@ -159,7 +159,6 @@ const util = {
 			key: 'search:history',
 			data: searchHistory,
 			success: function() {
-				// console.log('success');
 			}
 		});
 	},
@@ -170,7 +169,6 @@ const util = {
 		uni.removeStorage({
 			key: 'search:history',
 			success: function(res) {
-				console.log('success');
 			}
 		});
 		return []

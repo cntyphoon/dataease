@@ -1,4 +1,5 @@
 import { hexColorToRGBA } from '@/views/chart/chart/util'
+import { formatterItem, valueFormatter } from '@/views/chart/chart/formatter'
 
 export function getPadding(chart) {
   if (chart.drill) {
@@ -10,7 +11,7 @@ export function getPadding(chart) {
 // color,label,tooltip,axis,legend,background
 export function getTheme(chart) {
   const colors = []
-  let bgColor, labelFontsize, labelColor, tooltipColor, tooltipFontsize, legendColor, legendFontsize
+  let bgColor, labelFontsize, labelColor, tooltipColor, tooltipFontsize, tooltipBackgroundColor, legendColor, legendFontsize
   let customAttr = {}
   if (chart.customAttr) {
     customAttr = JSON.parse(chart.customAttr)
@@ -32,6 +33,7 @@ export function getTheme(chart) {
       const t = JSON.parse(JSON.stringify(customAttr.tooltip))
       tooltipColor = t.textStyle.color
       tooltipFontsize = t.textStyle.fontSize
+      tooltipBackgroundColor = t.backgroundColor
     }
   }
 
@@ -50,7 +52,7 @@ export function getTheme(chart) {
     }
   }
 
-  return {
+  const theme = {
     styleSheet: {
       brandColor: colors[0],
       paletteQualitative10: colors,
@@ -83,7 +85,8 @@ export function getTheme(chart) {
         domStyles: {
           'g2-tooltip': {
             color: tooltipColor,
-            fontSize: tooltipFontsize + 'px'
+            fontSize: tooltipFontsize + 'px',
+            background: tooltipBackgroundColor
           }
         }
       },
@@ -99,6 +102,12 @@ export function getTheme(chart) {
       }
     }
   }
+  // 百分比堆叠柱状图需要取消 offset，因为在顶部类别占比较低的时候有可能会把标签挤出去
+  // 并且视觉上也比较不舒服
+  if (chart.type === 'percentage-bar-stack') {
+    theme.innerLabels.offset = 0
+  }
+  return theme
 }
 // 通用label
 export function getLabel(chart) {
@@ -115,7 +124,7 @@ export function getLabel(chart) {
             type: l.position,
             autoRotate: false
           }
-        } else if (chart.type.includes('line')) {
+        } else if (chart.type.includes('line') || chart.type.includes('area')) {
           label = {
             position: l.position,
             offsetY: -8
@@ -128,6 +137,74 @@ export function getLabel(chart) {
         label.style = {
           fill: l.color,
           fontSize: parseInt(l.fontSize)
+        }
+        // label value formatter
+        if (chart.type && chart.type !== 'waterfall') {
+          label.formatter = function(param) {
+            let yAxis, extStack
+            let res = param.value
+            try {
+              yAxis = JSON.parse(chart.yaxis)
+            } catch (e) {
+              yAxis = JSON.parse(JSON.stringify(chart.yaxis))
+            }
+            try {
+              extStack = JSON.parse(chart.extStack)
+            } catch (e) {
+              extStack = JSON.parse(JSON.stringify(chart.extStack))
+            }
+
+            if (chart.type === 'bar-stack' ||
+              chart.type === 'line-stack' ||
+              chart.type === 'bar-stack-horizontal' ||
+              chart.type === 'percentage-bar-stack'
+            ) {
+              let f
+              if (extStack && extStack.length > 0) {
+                f = yAxis[0]
+              } else {
+                for (let i = 0; i < yAxis.length; i++) {
+                  if (yAxis[i].name === param.category) {
+                    f = yAxis[i]
+                    break
+                  }
+                }
+              }
+              if (!f) {
+                return res
+              }
+              if (!f.formatterCfg) {
+                f.formatterCfg = formatterItem
+              }
+              // 百分比堆叠柱状图保留小数处理
+              if (chart.type === 'percentage-bar-stack') {
+                f.formatterCfg.type = 'percent'
+                f.formatterCfg.decimalCount = l.reserveDecimalCount
+                f.formatterCfg.thousandSeparator = false
+              }
+              res = valueFormatter(param.value, f.formatterCfg)
+            } else if (chart.type === 'bar-group') {
+              const f = yAxis[0]
+              if (f.formatterCfg) {
+                res = valueFormatter(param.value, f.formatterCfg)
+              } else {
+                res = valueFormatter(param.value, formatterItem)
+              }
+            } else {
+              for (let i = 0; i < yAxis.length; i++) {
+                const f = yAxis[i]
+                if (f.name === param.category) {
+                  if (f.formatterCfg) {
+                    res = valueFormatter(param.value, f.formatterCfg)
+                  } else {
+                    res = valueFormatter(param.value, formatterItem)
+                  }
+                  break
+                }
+              }
+            }
+            return res
+          }
         }
       } else {
         label = false
@@ -147,8 +224,122 @@ export function getTooltip(chart) {
       const t = JSON.parse(JSON.stringify(customAttr.tooltip))
       if (t.show) {
         tooltip = {}
+        // tooltip value formatter
+        if (chart.type && chart.type !== 'waterfall') {
+          tooltip.formatter = function(param) {
+            let yAxis, extStack
+            let res = param.value
+            try {
+              yAxis = JSON.parse(chart.yaxis)
+            } catch (e) {
+              yAxis = JSON.parse(JSON.stringify(chart.yaxis))
+            }
+            try {
+              extStack = JSON.parse(chart.extStack)
+            } catch (e) {
+              extStack = JSON.parse(JSON.stringify(chart.extStack))
+            }
+
+            let obj
+            if (chart.type === 'bar-stack' ||
+              chart.type === 'line-stack' ||
+              chart.type === 'bar-stack-horizontal' ||
+              chart.type === 'percentage-bar-stack') {
+              let f
+              if (extStack && extStack.length > 0) {
+                obj = { name: param.category, value: param.value }
+                f = yAxis[0]
+              } else {
+                obj = { name: param.category, value: param.value }
+                for (let i = 0; i < yAxis.length; i++) {
+                  if (yAxis[i].name === param.category) {
+                    f = yAxis[i]
+                    break
+                  }
+                }
+              }
+              if (!f) {
+                return res
+              }
+              if (!f.formatterCfg) {
+                f.formatterCfg = formatterItem
+              }
+              if (chart.type === 'percentage-bar-stack') {
+                // 保留小数位数和标签保持一致，这边拿一下标签的配置
+                const l = JSON.parse(JSON.stringify(customAttr.label))
+                f.formatterCfg.type = 'percent'
+                f.formatterCfg.decimalCount = l.reserveDecimalCount
+                f.formatterCfg.thousandSeparator = false
+              }
+              res = valueFormatter(param.value, f.formatterCfg)
+            } else if (chart.type === 'word-cloud') {
+              obj = { name: param.text, value: param.value }
+              for (let i = 0; i < yAxis.length; i++) {
+                const f = yAxis[i]
+                if (f.formatterCfg) {
+                  res = valueFormatter(param.value, f.formatterCfg)
+                } else {
+                  res = valueFormatter(param.value, formatterItem)
+                }
+              }
+            } else if (chart.type.includes('treemap')) {
+              obj = { name: param.name, value: param.value }
+              for (let i = 0; i < yAxis.length; i++) {
+                const f = yAxis[i]
+                if (f.formatterCfg) {
+                  res = valueFormatter(param.value, f.formatterCfg)
+                } else {
+                  res = valueFormatter(param.value, formatterItem)
+                }
+              }
+            } else if (chart.type.includes('pie') || chart.type.includes('funnel')) {
+              obj = { name: param.field, value: param.value }
+              for (let i = 0; i < yAxis.length; i++) {
+                const f = yAxis[i]
+                if (f.formatterCfg) {
+                  res = valueFormatter(param.value, f.formatterCfg)
+                } else {
+                  res = valueFormatter(param.value, formatterItem)
+                }
+              }
+            } else if ((chart.type.includes('bar') || chart.type.includes('line') || chart.type.includes('scatter') || chart.type.includes('radar') || chart.type.includes('area')) && !chart.type.includes('group')) {
+              obj = { name: param.category, value: param.value }
+              for (let i = 0; i < yAxis.length; i++) {
+                const f = yAxis[i]
+                if (f.name === param.category) {
+                  if (f.formatterCfg) {
+                    res = valueFormatter(param.value, f.formatterCfg)
+                  } else {
+                    res = valueFormatter(param.value, formatterItem)
+                  }
+                  break
+                }
+              }
+            } else if (chart.type.includes('group')) {
+              obj = { name: param.category, value: param.value }
+              for (let i = 0; i < yAxis.length; i++) {
+                const f = yAxis[i]
+                if (f.formatterCfg) {
+                  res = valueFormatter(param.value, f.formatterCfg)
+                } else {
+                  res = valueFormatter(param.value, formatterItem)
+                }
+              }
+            } else {
+              res = param.value
+            }
+            obj.value = res
+            return obj
+          }
+        }
       } else {
-        tooltip = false
+        // 百分比堆叠柱状图隐藏 tooltip 设置 show 为 false 或者直接设置 tooltip 为 false 都无效，会变成分组显示，
+        // 需要将容器(container)或者内容框(showContent)设置为 false 或者 null 才可以隐藏
+        if (chart.type === 'percentage-bar-stack') {
+          tooltip.showContent = false
+        } else {
+          tooltip = false
+        }
       }
     }
   }
@@ -227,7 +418,8 @@ export function getLegend(chart) {
           offsetY: offsetY,
           marker: {
             symbol: legendSymbol
-          }
+          },
+          radio: false // 柱状图图例的聚焦功能，默认先关掉
         }
       } else {
         legend = false
@@ -267,6 +459,17 @@ export function getXAxis(chart) {
           style: {
             fill: a.axisLabel.color,
             fontSize: parseInt(a.axisLabel.fontSize)
+          },
+          formatter: function(value) {
+            if (chart.type.includes('horizontal')) {
+              if (!a.axisLabelFormatter) {
+                return valueFormatter(value, formatterItem)
+              } else {
+                return valueFormatter(value, a.axisLabelFormatter)
+              }
+            } else {
+              return value
+            }
           }
         } : null
 
@@ -327,6 +530,21 @@ export function getYAxis(chart) {
           style: {
             fill: a.axisLabel.color,
             fontSize: parseInt(a.axisLabel.fontSize)
+          },
+          formatter: function(value) {
+            if (chart.type === 'waterfall') {
+              return value
+            } else {
+              if (!chart.type.includes('horizontal')) {
+                if (!a.axisLabelFormatter) {
+                  return valueFormatter(value, formatterItem)
+                } else {
+                  return valueFormatter(value, a.axisLabelFormatter)
+                }
+              } else {
+                return value
+              }
+            }
           }
         } : null
 
@@ -421,9 +639,9 @@ function transAxisPosition(chart, axis) {
   if (chart.type.includes('horizontal')) {
     switch (axis.position) {
       case 'top':
-        return 'right'
-      case 'bottom':
         return 'left'
+      case 'bottom':
+        return 'right'
       case 'left':
         return 'bottom'
       case 'right':
@@ -439,13 +657,38 @@ function transAxisPosition(chart, axis) {
 export function getSlider(chart) {
   let senior = {}
   let cfg = false
-  if (chart.senior && chart.type && (chart.type.includes('bar') || chart.type.includes('line') || chart.type.includes('mix'))) {
+  if (chart.senior && chart.type && (chart.type.includes('bar') || chart.type.includes('line') || chart.type.includes('mix') || chart.type.includes('area'))) {
     senior = JSON.parse(chart.senior)
     if (senior.functionCfg) {
       if (senior.functionCfg.sliderShow) {
         cfg = {
           start: parseInt(senior.functionCfg.sliderRange[0]) / 100,
           end: parseInt(senior.functionCfg.sliderRange[1]) / 100
+        }
+
+        if (senior.functionCfg.sliderBg) {
+          cfg.backgroundStyle = {
+            fill: senior.functionCfg.sliderBg,
+            stroke: senior.functionCfg.sliderBg,
+            lineWidth: 1,
+            strokeOpacity: 0.5
+          }
+        }
+        if (senior.functionCfg.sliderFillBg) {
+          cfg.foregroundStyle = {
+            'fill': senior.functionCfg.sliderFillBg,
+            'fillOpacity': 0.5
+          }
+        }
+        if (senior.functionCfg.sliderTextClolor) {
+          cfg.textStyle = {
+            'fill': senior.functionCfg.sliderTextClolor
+          }
+          cfg.handlerStyle = {
+            'fill': senior.functionCfg.sliderTextClolor,
+            'fillOpacity': 0.5,
+            'highLightFill': senior.functionCfg.sliderTextClolor
+          }
         }
       }
     }
@@ -456,10 +699,26 @@ export function getSlider(chart) {
 export function getAnalyse(chart) {
   let senior = {}
   const assistLine = []
-  if (chart.senior && chart.type && (chart.type.includes('bar') || chart.type.includes('line') || chart.type.includes('mix'))) {
+  if (chart.senior && chart.type && (chart.type.includes('bar') || chart.type.includes('line') || chart.type.includes('mix') || chart.type.includes('area'))) {
     senior = JSON.parse(chart.senior)
     if (senior.assistLine && senior.assistLine.length > 0) {
-      senior.assistLine.forEach(ele => {
+      const customStyle = JSON.parse(chart.customStyle)
+      let xAxisPosition, yAxisPosition
+      if (customStyle.xAxis) {
+        const a = JSON.parse(JSON.stringify(customStyle.xAxis))
+        xAxisPosition = transAxisPosition(chart, a)
+      }
+      if (customStyle.yAxis) {
+        const a = JSON.parse(JSON.stringify(customStyle.yAxis))
+        yAxisPosition = transAxisPosition(chart, a)
+      }
+
+      const fixedLines = senior.assistLine.filter(ele => ele.field === '0')
+      const dynamicLines = chart.data.dynamicAssistLines
+      const lines = fixedLines.concat(dynamicLines)
+
+      lines.forEach(ele => {
+        const content = ele.name + ' : ' + parseFloat(ele.value)
         assistLine.push({
           type: 'line',
           start: ['start', parseFloat(ele.value)],
@@ -469,18 +728,34 @@ export function getAnalyse(chart) {
             lineDash: getLineDash(ele.lineType)
           }
         })
-        assistLine.push({
-          type: 'text',
-          position: ['start', parseFloat(ele.value)],
-          content: parseFloat(ele.value),
-          offsetY: -2,
-          offsetX: 2,
-          style: {
-            textBaseline: 'bottom',
-            fill: ele.color,
-            fontSize: 10
-          }
-        })
+        if (!chart.type.includes('horizontal')) {
+          assistLine.push({
+            type: 'text',
+            position: [yAxisPosition === 'left' ? 'start' : 'end', parseFloat(ele.value)],
+            content: content,
+            offsetY: -2,
+            offsetX: yAxisPosition === 'left' ? 2 : -10 * (content.length - 2),
+            style: {
+              textBaseline: 'bottom',
+              fill: ele.color,
+              fontSize: 10
+            }
+          })
+        } else {
+          assistLine.push({
+            type: 'text',
+            position: [xAxisPosition === 'left' ? 'start' : 'end', parseFloat(ele.value)],
+            content: content,
+            offsetY: xAxisPosition === 'left' ? -2 : -10 * (content.length - 2),
+            offsetX: 2,
+            rotate: Math.PI / 2,
+            style: {
+              textBaseline: 'bottom',
+              fill: ele.color,
+              fontSize: 10
+            }
+          })
+        }
       })
     }
   }

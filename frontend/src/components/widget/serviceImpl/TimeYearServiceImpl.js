@@ -15,6 +15,7 @@ const dialogPanel = {
       placeholder: 'deyear.placeholder',
       viewIds: [],
       fieldId: '',
+      parameters: [],
       dragItems: [],
       default: {
         isDynamic: false,
@@ -71,12 +72,14 @@ class TimeYearServiceImpl extends WidgetService {
   initLeftPanel() {
     const value = JSON.parse(JSON.stringify(leftPanel))
     return value
-    // console.log('this is first initWidget')
   }
 
   initFilterDialog() {
     const value = JSON.parse(JSON.stringify(dialogPanel))
     return value
+  }
+  customValue() {
+    return 2
   }
 
   initDrawPanel() {

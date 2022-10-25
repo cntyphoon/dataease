@@ -1,6 +1,6 @@
 <template>
   <div v-if="element" class="default-value-div">
-    <el-form ref="form" :model="element.options.attrs.default" label-width="100px">
+    <el-form ref="form" :model="element.options.attrs.default" label-width="100px" size="mini">
 
       <el-form-item :label="$t('dynamic_time.set_default')">
         <el-radio-group v-model="element.options.attrs.default.isDynamic" @change="dynamicChange">
@@ -8,6 +8,7 @@
           <el-radio
             v-for="(item, index) in defaultSetting.radioOptions"
             :key="index"
+            :disabled="isTimeWidget && element.options.attrs.showTime && item.value"
             :label="item.value"
           >
             {{ $t(item.text) }}
@@ -21,6 +22,7 @@
           v-model="element.options.attrs.default.dkey"
           placeholder=""
           class="relative-time"
+          popper-class="date-filter-poper"
           @change="dkeyChange"
         >
           <el-option
@@ -37,7 +39,7 @@
       <div class="inline">
 
         <el-form-item
-          v-if="element.options.attrs.default.isDynamic && element.options.attrs.default.dkey === (defaultSetting.relativeOptions.length - 1)"
+          v-if="element.options.attrs.default.isDynamic && element.options.attrs.default.dkey === customValue"
           label=""
         >
           <el-input-number
@@ -45,13 +47,13 @@
             controls-position="right"
             size="mini"
             :min="1"
-            :max="12"
+            :max="100"
             @change="dynamicPrefixChange"
           />
         </el-form-item>
 
         <el-form-item
-          v-if="element.options.attrs.default.isDynamic && element.options.attrs.default.dkey === (defaultSetting.relativeOptions.length - 1)"
+          v-if="element.options.attrs.default.isDynamic && element.options.attrs.default.dkey === customValue"
           label=""
           class="no-label-item"
         >
@@ -73,7 +75,7 @@
         </el-form-item>
 
         <el-form-item
-          v-if="element.options.attrs.default.isDynamic && element.options.attrs.default.dkey === (defaultSetting.relativeOptions.length - 1)"
+          v-if="element.options.attrs.default.isDynamic && element.options.attrs.default.dkey === customValue"
           label=""
           class="no-label-item"
         >
@@ -94,7 +96,8 @@
       <el-form-item v-if="element.options.attrs.default.isDynamic" :label="$t('dynamic_time.preview')">
         <el-date-picker
           v-model="dval"
-          :type="element.options.attrs.type"
+          :type="componentType"
+          :format="labelFormat"
           disabled
           placeholder=""
           class="relative-time"
@@ -139,6 +142,31 @@ export default {
       const widget = ApplicationContext.getService(this.element.serviceName)
       const setting = widget.defaultSetting()
       return setting
+    },
+    isTimeWidget() {
+      const widget = ApplicationContext.getService(this.element.serviceName)
+      return widget.isTimeWidget && widget.isTimeWidget()
+    },
+    componentType() {
+      let result = this.element.options.attrs.type
+      if (this.isTimeWidget && this.element.options.attrs.showTime) {
+        result = 'datetime'
+      }
+      return result
+    },
+    labelFormat() {
+      const result = 'yyyy-MM-dd'
+      if (this.isTimeWidget && this.element.options.attrs.showTime && this.element.options.attrs.accuracy) {
+        return result + ' ' + this.element.options.attrs.accuracy
+      }
+      return null
+    },
+    customValue() {
+      const widget = ApplicationContext.getService(this.element.serviceName)
+      if (widget.customValue) {
+        return widget.customValue()
+      }
+      return 2
     }
   },
   created() {

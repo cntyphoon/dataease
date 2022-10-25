@@ -96,7 +96,7 @@ export default {
         const param = this.user ? { password: this.form.password, resourceId: this.resourceId, user: this.user } : { password: this.form.password, resourceId: this.resourceId }
         validatePwd(param).then(res => {
           if (!res.data) {
-            this.msg = this.$t('pblink.pwd_error')
+            this.msg = this.$t('system_parameter_setting.password_input_error')
           } else {
             this.$emit('fresh-token')
           }
@@ -197,11 +197,6 @@ export default {
         border: 1px solid #e8eaed;
         display: block;
     }
-    // .div-input {
-    //     inset: 2px 4px;
-    // position: absolute;
-    // display: block;
-    // }
     .abs-input {
         height: 20px;
     position: relative;
@@ -221,18 +216,6 @@ export default {
     color: #E65251;
     box-sizing: border-box;
     }
-    // .real-input {
-    //     width: 100%;
-    //     height: 100%;
-    //     border: none;
-    //     outline: none;
-    //     padding: 0px;
-    //     margin: 0px;
-    //     inset: 0px;
-    //     position: absolute;
-    //     display: block;
-
-    // }
     .auth-root-class {
         margin: 15px 0px 5px;
         text-align: center;

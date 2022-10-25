@@ -139,7 +139,6 @@ export default {
       }
       // 防止toolbar超出边界
       const xGap = ps + 295 - this.canvasWidth
-      // console.log('canvasWidth:' + this.canvasWidth + ';xGap:' + xGap)
       if (xGap > 0) {
         return ps - xGap
       } else {
@@ -154,7 +153,7 @@ export default {
       }
     },
     styleChange() {
-      this.$store.commit('recordStyleChange')
+      this.$store.commit('canvasChange')
     }
   }
 }

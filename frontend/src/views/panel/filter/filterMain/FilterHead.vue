@@ -5,26 +5,23 @@
         <div class="field-content">
 
           <div class="field-content-right">
-            <el-row style="display:flex;height: 32px;">
+            <el-row style="display:inline-flex;height: 32px;width: 100%;">
               <draggable
                 v-model="element.options.attrs.dragItems"
+                tag="v-layout"
                 group="dimension"
                 animation="300"
                 :move="onMove"
-                class="theme-drag"
+                class="row wrap justify-space-around theme-drag"
                 style="width:100%;height: 100%;margin:0 10px;border-radius: 4px;overflow-x: auto;display: flex;align-items: center;"
                 @end="end2"
               >
-                <div class="list-group-container">
-                  <drag-item
-                    v-for="(item,index) in element.options.attrs.dragItems"
-                    :key="item.id"
-                    :item="item"
-                    :index="index"
-                    @closeItem="closeItem"
-                  />
-                </div>
-                <transition-group class="list-group" :data-value="$t('panel.drag_here')" />
+
+                <v-flex v-for="(item,index) in element.options.attrs.dragItems" :key="item.id">
+                  <drag-item :key="item.id" :is-sort-widget="isSortWidget" :item="item" :index="index" :sort="element.options.attrs.sort" :all-fields="index ? [] : tableFields" @closeItem="closeItem" @sort-change="sortChange" />
+                </v-flex>
+
+                <span solt="footer">{{ $t('panel.drag_here') }}</span>
               </draggable>
             </el-row>
           </div>
@@ -37,6 +34,8 @@
 <script>
 import draggable from 'vuedraggable'
 import DragItem from '@/components/DragItem'
+import { fieldListWithPermission } from '@/api/dataset/dataset'
+
 export default {
   name: 'FilterHead',
   components: {
@@ -47,22 +46,56 @@ export default {
     element: {
       type: Object,
       default: () => {}
+    },
+
+    widget: {
+      type: Object,
+      default: null
     }
   },
   data() {
     return {
-      targets: []
+      targets: [],
+      tableFields: []
+    }
+  },
+  computed: {
+    isSortWidget() {
+      return this.widget && this.widget.isSortWidget && this.widget.isSortWidget()
+    },
+
+    firstTableId() {
+      if (!this.isSortWidget) return null
+      if (this.element.options.attrs.dragItems && this.element.options.attrs.dragItems.length) {
+        return this.element.options.attrs.dragItems[0].tableId
+      }
+      return null
     }
   },
 
   watch: {
-
+    firstTableId(val, old) {
+      if (val !== old) {
+        this.loadFields()
+      }
+    }
   },
   created() {
+    if (this.isSortWidget && this.element.options.attrs.dragItems && this.element.options.attrs.dragItems.length) {
+      this.loadFields()
+    }
   },
   methods: {
+    loadFields() {
+      if (this.firstTableId) {
+        fieldListWithPermission(this.firstTableId).then(res => {
+          this.tableFields = JSON.parse(JSON.stringify(res.data))
+        })
+      } else {
+        this.tableFields = []
+      }
+    },
     onMove(e, originalEvent) {
-      // this.moveId = e.draggedContext.element.id
       return true
     },
     end2(e) {},
@@ -70,6 +103,12 @@ export default {
     closeItem(tag) {
       const index = tag.index
       this.element.options.attrs.dragItems.splice(index, 1)
+      if (!index) {
+        this.element.options.attrs.sort = null
+      }
+    },
+    sortChange(param) {
+      this.element.options.attrs.sort = param
     }
   }
 }
@@ -78,7 +117,7 @@ export default {
 <style lang="scss" scoped>
   .filter-field {
     border-radius: 4px;
-    height: 45px;
+    height: 40px;
 
     .field-content {
       position: relative;
@@ -113,14 +152,15 @@ export default {
         border-left: none;
         color: #9ea6b2;
         border: 1px solid var(--TableBorderColor, #E6E6E6);
-        width: 0%;
-        max-width: 0%;
+        width: 100%;
+        // max-width: 0%;
         position: relative;
-        display: table-cell;
+        display: inherit;
         vertical-align: middle;
         margin: 0px;
-        padding: 0 0 0 0;
+        padding: 4px 0 0 0;
         height: 100%;
+        line-height: 100%;
       }
     }
 
